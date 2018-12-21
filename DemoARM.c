@@ -1,4 +1,4 @@
-/******************************************************************************************
+        /******************************************************************************************
 1) Implementar um sequencial de leds que acenda e teste todos os segmentos dos 4 displays do kit de
 demonstração, esta parte do programa deverá ser iniciada assim que a placa for energizada, como sugestão,
 poderá ser utilizado um intervalo de 100ms entre as transições.
@@ -23,12 +23,12 @@ interruptores, um interruptor aumenta o brilho e o outro interruptor diminui o b
 #define LOW 0
 
 //LCD module connections
-sbit LCD_RS at GPIOD_ODR.B2;
-sbit LCD_EN at GPIOD_ODR.B3;
-sbit LCD_D4 at GPIOD_ODR.B4;
-sbit LCD_D5 at GPIOD_ODR.B5;
-sbit LCD_D6 at GPIOD_ODR.B6;
-sbit LCD_D7 at GPIOD_ODR.B7;
+sbit LCD_RS at GPIOB_ODR.B3;
+sbit LCD_EN at GPIOB_ODR.B5;
+sbit LCD_D4 at GPIOB_ODR.B6;
+sbit LCD_D5 at GPIOB_ODR.B7;
+sbit LCD_D6 at GPIOB_ODR.B8;
+sbit LCD_D7 at GPIOB_ODR.B9;
 
 /************* Variables ***********/
 const char unsigned SEQUENCE_PLACES[4][4]=
@@ -38,6 +38,8 @@ const char unsigned SEQUENCE_PLACES[4][4]=
     {0, 0, 1, 0},
     {0, 0, 0, 1}
 };
+
+const char unsigned SEVEN_SEGMENTS[] = {1, 2, 4, 8, 16, 32, 64, 128};
 const unsigned char TIME_INTERVAL = 100;
 const unsigned char SCROLLTEXT_SPEED = 350;
 const unsigned char GIFT_ICON[] = {17,10,31,21,31,21,31,0};
@@ -45,6 +47,9 @@ unsigned char unit, ten, hundred, thousand, readingCountAdc1, readingCountAdc2;
 unsigned char txt[7], txt_1[7];
 int value, avg;
 long sum;
+
+int valor;
+char sentido;
 
 /************* Headers ***********/
 void demoSevenSegmentDisplay();
@@ -54,6 +59,7 @@ void demoLiquidCrystalDisplay();
 void counterSystem();
 void setup();
 void loop();
+void pwm();
 
 /************* Functions ***********/
 void demoSevenSegmentDisplay()
@@ -71,7 +77,7 @@ void demoSevenSegmentDisplay()
             gpiod_odr = decode(number);
             delay_ms(TIME_INTERVAL);
         }
-        delay_ms(2*TIME_INTERVAL);
+        delay_ms(TIME_INTERVAL);
     }
 }
 
@@ -111,59 +117,67 @@ void demoLiquidCrystalDisplay()
     lcd_cmd(_LCD_CLEAR);
 }
 
-void multiplex(){
+void multiplex()
+{
     GPIOC_ODR.B3 = 0;
     GPIOC_ODR.B2 = 0;
     GPIOC_ODR.B1 = 0;
     GPIOC_ODR.B0 = 1;
     GPIOD_ODR = decode(unit);
-    delay_ms(TIME_INTERVAL);
+    delay_ms(1);
     
     GPIOC_ODR.B3 = 0;
     GPIOC_ODR.B2 = 0;
     GPIOC_ODR.B1 = 1;
     GPIOC_ODR.B0 = 0;
     GPIOD_ODR = decode(ten);
-    delay_ms(TIME_INTERVAL);
+    delay_ms(1);
 
     GPIOC_ODR.B3 = 0;
     GPIOC_ODR.B2 = 1;
     GPIOC_ODR.B1 = 0;
     GPIOC_ODR.B0 = 0;
     GPIOD_ODR = decode(hundred);
-    delay_ms(TIME_INTERVAL);
+    delay_ms(1);
 
     GPIOC_ODR.B3 = 1;
     GPIOC_ODR.B2 = 0;
     GPIOC_ODR.B1 = 0;
     GPIOC_ODR.B0 = 0;
-    GPIOD_ODR = decode(thousand);
-    delay_ms(TIME_INTERVAL);
+    GPIOD_ODR = decode(6);
+    delay_ms(1);
 }
 
 void setup()
 {
-    //PORTD
-    gpio_digital_output(&GPIOD_ODR, //output data register (ODR)
+    //PORTD (7-segments-LED)
+    gpio_digital_output(&GPIOD_ODR,
         _gpio_pinmask_0 |_gpio_pinmask_1 |_gpio_pinmask_2 |
         _gpio_pinmask_3 |_gpio_pinmask_4 |_gpio_pinmask_5 |
         _gpio_pinmask_6 |_gpio_pinmask_7);
 
-    //PORTC
+    //PORTB (LCD)
+    gpio_digital_output(&GPIOB_ODR,
+        _gpio_pinmask_3 |_gpio_pinmask_5 |_gpio_pinmask_6 |
+        _gpio_pinmask_7 |_gpio_pinmask_8 |_gpio_pinmask_9);    
+
+    //PORTC (7-segments-trigger)
     gpio_digital_output(&GPIOC_ODR, 
-        _gpio_pinmask_0 |_gpio_pinmask_1 | _gpio_pinmask_2 | _gpio_pinmask_3|
-        _gpio_pinmask_4 /*led*/ );
+        _gpio_pinmask_0 |_gpio_pinmask_1 | _gpio_pinmask_2 |
+        _gpio_pinmask_3 |_gpio_pinmask_4);
 
-    //PORTE
+    //PORTE (k0-k1)
     gpio_config(&GPIOE_BASE,
-        _gpio_pinmask_3 | _gpio_pinmask_4 |/*bits 3 e 4*/
-        _gpio_pinmask_2 | _gpio_pinmask_5,/*bits 3 e 4*/
-        _gpio_cfg_mode_input | _gpio_cfg_pull_up); //configuracao dos bits como entrada com pull up ativo
+        _gpio_pinmask_3 | _gpio_pinmask_4 |
+        _gpio_pinmask_2 | _gpio_pinmask_5,
+        _gpio_cfg_mode_input | _gpio_cfg_pull_up);
 
+    //Potenciometro
     adc1_init();
     adc_set_input_channel(_adc_channel_1);
 
-    adc2_init();
+    //Temperatura
+    adc1_init();
     adc_set_input_channel(_adc_channel_2);
 
     //SETUP LCD
@@ -171,18 +185,25 @@ void setup()
     lcd_cmd(_LCD_CLEAR);
     lcd_cmd(_LCD_CURSOR_OFF);
 
-    //SETUP LED
-    gpio_digital_output(&GPIOD_ODR, //output data register (ODR)
-        _gpio_pinmask_0 |_gpio_pinmask_1 |_gpio_pinmask_2 |
-        _gpio_pinmask_3 |_gpio_pinmask_4 |_gpio_pinmask_5 |
-        _gpio_pinmask_6 |_gpio_pinmask_7);
+    //SETUP PWM
+    valor  = 0;
+    sentido = 0;
+    PWM_TIM1_Init(40000);//frequencia do pwm
+    PWM_TIM1_Set_Duty(valor, _PWM_NON_INVERTED, _PWM_CHANNEL1);
+    //ciclo de trabalho 0 ... 2047
+    PWM_TIM1_Start(_PWM_CHANNEL1, &_GPIO_MODULE_TIM1_CH1_PE9);
+}
+
+void pwm(){
+    delay_ms(10);
+    PWM_TIM1_Set_Duty(valor,  _PWM_NON_INVERTED, _PWM_CHANNEL1);
 }
 
 void readADC1()
 {
-    lcd_out(1,1,"V1=");
+    lcd_out(1,1,"P=");
     value = adc1_read(1);
-    sum = sum + value;
+    sum = sum + adc1_read(1);
     inttostr(value,txt);
     lcd_out_cp(ltrim(txt));
     readingCountAdc1 ++;
@@ -190,26 +211,33 @@ void readADC1()
         avg = sum / readingCountAdc1;
         sum = 0;
         readingCountAdc1 = 0;
-        lcd_out(2,1,"M1=");
+        lcd_out(2,1,"mP=");
         inttostr(avg,txt_1);
         lcd_out_cp(ltrim(txt_1));
     }
 }
 void readADC2()
 {
-    lcd_out(1,10,"V2=");
-    value = adc2_read(2);
-    sum = sum + value;
-    inttostr(value,txt);
-    lcd_out_cp(ltrim(txt));
+    value = adc1_read(2);
+    avg = avg + value;
     readingCountAdc2 ++;
-    if(readingCountAdc2 >= 50){
-        avg = sum / readingCountAdc2;
-        sum = 0;
+    if (readingCountAdc2 == 15)
+    {
+        sum = avg / readingCountAdc2;
         readingCountAdc2 = 0;
-        lcd_out(2,10,"M2=");
-        inttostr(avg,txt_1);
-        lcd_out_cp(ltrim(txt_1));
+        avg = 0;
+        sum = sum - (sum * 100 /515); //ajusta volt ;
+        sum = ((value * 3.3 / 4096) /0.01) - 3;
+        inttostr (sum, txt_1);
+        if(sum < 10)
+        {
+            lcd_out(2,13," ");
+            lcd_out(2,14,ltrim(txt_1));
+        }
+        else
+        {
+            lcd_out(2,13,ltrim(txt_1));
+        }
     }
 }
 
@@ -219,21 +247,21 @@ void counterSystem()
     if(GPIOE_IDR.B3 == LOW)
     {
         while(GPIOE_IDR.B3 == LOW)multiplex();
-        unit ++;
+        unit++;
         if(unit == 10)
         {
             unit = 0;
-            ten ++;
+            ten++;
         }
         if(ten == 10)
         {
             ten = 0;
-            hundred ++;
+            hundred++;
         }
         if(hundred == 10)
         {
             hundred = 0;
-            thousand ++;
+            thousand++;
         }
         if(thousand == 10)
         {
@@ -250,23 +278,27 @@ void counterSystem()
         multiplex();
         if(GPIOE_IDR.B4 == LOW)
         {
-            unit --;
-            if(unit == -1)
+            unit--;
+            if(unit == 0)
             {
                 unit = 9;
-                ten --;
+                ten--;
             }
-            if(ten == -1)
+            if(ten == 0)
             {
                 ten = 9;
-                hundred --;
+                hundred--;
             }
-            if(hundred == -1)
+            if(hundred == 0)
             {
                 hundred = 9;
-                thousand --;
+                thousand--;
             }
-            if(thousand == -1) thousand = 0;
+            if(hundred == 0)
+            {
+                hundred = 9;
+                thousand--;
+            }
         }
     }
 }
@@ -274,7 +306,26 @@ void counterSystem()
 
 void changeLEDBright()
 {
-    
+    if(GPIOE_IDR.B2 == HIGH)
+    {
+        pwm();
+        if(GPIOE_IDR.B2 == HIGH)
+        {
+            if(valor < 2048)
+                valor++;
+        }
+    }
+
+    if(GPIOE_IDR.B5 == HIGH)
+    {        
+        pwm();
+        if(GPIOE_IDR.B4 == HIGH)
+        {
+            if(valor > 0)
+                valor--;
+        }
+    }
+    //pwm();
 }
 
 void loop()
@@ -297,8 +348,8 @@ void main()
 {
     setup();
     
-    //demoSevenSegmentDisplay();
-    //demoLiquidCrystalDisplay();
+    demoSevenSegmentDisplay();
+    demoLiquidCrystalDisplay();
 
     while(1) loop();
 }

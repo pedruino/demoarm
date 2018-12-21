@@ -11,8 +11,6 @@ main
 		ADC_Set_Input_Channel
 			GPIO_Analog_Input
 				GPIO_Config
-		ADC2_Init
-			ADCx_Init
 		Lcd_Init
 			GPIO_Config
 			Delay_5500us
@@ -21,6 +19,25 @@ main
 			Delay_1us
 			Delay_5500us
 			Delay_50us
+		PWM_TIM1_Init
+			PWM_TIMx_Init
+				Get_Fosc_kHz
+		PWM_TIM1_Set_Duty
+			PWM_TIMx_Set_Duty
+		PWM_TIM1_Start
+			PWM_TIMx_Start
+				GPIO_Alternate_Function_Enable
+					GPIO_Config_Pin_Alternate_Function
+						GPIO_Config
+	demoSevenSegmentDisplay
+		decode
+	demoLiquidCrystalDisplay
+		Lcd_Out
+			Lcd_Cmd
+			Lcd_Chr_CP
+				Lcd_Cmd
+		Lcd_Cmd
+		__CC2DW
 	loop
 		multiplex
 			decode
@@ -28,9 +45,6 @@ main
 			multiplex
 		readADC1
 			Lcd_Out
-				Lcd_Cmd
-				Lcd_Chr_CP
-					Lcd_Cmd
 			ADC1_Read
 				ADC_Set_Input_Channel
 				ADC1_Init
@@ -43,15 +57,12 @@ main
 				Lcd_Chr_CP
 			Ltrim
 		readADC2
-			Lcd_Out
-			ADC2_Read
-				ADC_Set_Input_Channel
-				ADC2_Init
-				ADC2_Get_Sample
-					ADCx_Get_Sample
+			ADC1_Read
 			IntToStr
-			Lcd_Out_CP
+			Lcd_Out
 			Ltrim
 		changeLEDBright
+			pwm
+				PWM_TIM1_Set_Duty
 	__CC2DW
 	__FillZeros

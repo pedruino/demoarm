@@ -38055,6 +38055,7 @@ pwid1
 pwid1_bit
 pwid1_fsmc_pcr3_bit
 pwid1_fsmc_pcr4_bit
+pwm
 pwm_tim1_init
 pwm_tim1_set_duty
 pwm_tim1_start
@@ -39778,6 +39779,7 @@ sedet_otg_hs_gotgint_bit
 seis
 seis
 seis_bit
+sentido
 sequence_places
 ser
 ser
@@ -40360,6 +40362,7 @@ setpend95
 setpend95
 setpend95_bit
 setup
+seven_segments
 sevonpend
 sevonpend
 sevonpend_bit
@@ -46310,6 +46313,7 @@ usgfaultena_bit
 usp
 usp
 usp_bit
+valor
 value
 variant
 variant0
